@@ -21,15 +21,20 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QUrl
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
+from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply,  QNetworkAccessManager
+from qgis.core import QgsProject, Qgis
+import os
+import os.path
+import tempfile
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .get_nsi_data_dialog import GetNSIDataDialog
-import os.path
+from .get_nsi_data_dialog import GetNSIDataDialog, GetStateNSIDataDialog
+
 
 
 class GetNSIData:
@@ -58,7 +63,12 @@ class GetNSIData:
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
-
+        
+        self.dir = tempfile.gettempdir()
+        self.nam = QNetworkAccessManager()
+        self.nam.finished.connect(self.reply_finished)    
+        
+        
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Get NSI Data')
@@ -163,10 +173,16 @@ class GetNSIData:
         icon_path = ':/plugins/get_nsi_data/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Get NSI Data'),
-            callback=self.run,
+            text=self.tr(u'Get State NSI Data'),
+            callback=self.runState,
             parent=self.iface.mainWindow())
 
+        self.add_action(
+            icon_path,
+            text=self.tr(u'Get FIPS NSI Data'),
+            callback=self.run,
+            parent=self.iface.mainWindow())
+            
         # will be set False in run()
         self.first_start = True
 
@@ -179,14 +195,141 @@ class GetNSIData:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def selectStateOutputFolder(self):
+        folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
+        self.dlgState.stateSaveLine.setText(folderName)
+        self.dir = folderName
+     
+    def reply_finished(self, reply):    
+        
+        if reply != None:
+            possibleRedirectUrl = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
+            
+        # If the URL is not empty, we're being redirected. 
+            if possibleRedirectUrl != None:
+                request = QNetworkRequest(possibleRedirectUrl)
+                result = self.nam.get(request)  
+                result.downloadProgress.connect(lambda done,  all,  reply=result: self.progress(done,  all,  reply))
+            else:             
+                if reply.error() != None and reply.error() != QNetworkReply.NoError:
+                    self.is_error = reply.errorString()
+                    reply.abort()
+                    reply.deleteLater()
+                        
+                elif reply.error() ==  QNetworkReply.NoError:
+                    result = reply.readAll()
+                    f = open(self.filename, 'wb')
+                    f.write(result)
+                    f.close()      
+                    
+                    out_gpkg = self.unzip(self.filename)
+                    (dir, file) = os.path.split(out_gpkg)
+                    
+                    try:
+                        if not self.layer_exists(file):
+                            self.iface.addVectorLayer(out_gpkg, file, 'ogr')
+                    except:
+                        pass
+                        
+                    self.set_progress()
+                    self.iface.messageBar().pushMessage(
+                        "Success", f"Downloaded file saved at {self.dir}",
+                        level=Qgis.Success, duration=5
+                    )
+                        
+                # Clean up. */
+                    reply.deleteLater()
+                    
+    def layer_exists(self,  name):            
+        
+        if len(QgsProject.instance().mapLayersByName(name)) != 0:
+            return True
+        else:
+            return False
+            
+    def unzip(self,  zip_file):
+        import zipfile
+        (dir, file) = os.path.split(zip_file)
 
+        if not dir.endswith(':') and not os.path.exists(dir):
+            os.mkdir(dir)
+        
+        try:
+            zf = zipfile.ZipFile(zip_file)
+    
+            # extract files to directory structure
+            for i, name in enumerate(zf.namelist()):
+                if not name.endswith('/'):
+                    outfile = open(os.path.join(dir, name), 'wb')
+                    outfile.write(zf.read(name))
+                    outfile.flush()
+                    outfile.close()
+                    return os.path.join(dir, name)
+        except:
+            return None
+            
+    def set_progress(self,  akt_val=None,  all_val=None):
+        if all_val == None:
+            progress_value = self.dlgState.progressBar.value() + 10
+            self.dlgState.progressBar.setValue(progress_value)
+            
+        else:
+            self.dlgState.progressBar.setMaximum(all_val)
+            self.dlgState.progressBar.setValue(akt_val)
+            
+    def runState(self):
+        """Run method that performs all the real work"""
+
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        if self.first_start == True:
+            #self.first_start = False
+            self.dlgState = GetStateNSIDataDialog()
+            self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
+
+        statesDict = {
+            'Alabama': {'abbr':'AL', 'fips':'01'},
+            'Alaska': {'abbr':'AK', 'fips':'02'},
+            'Arizona': {'abbr':'AZ', 'fips':'04'}
+        }
+        
+        # Clear the contents of the state comboBox from previous runs
+        self.dlgState.comboBoxState.clear()
+        # Populate the comboBox with state names
+        self.dlgState.comboBoxState.addItems([state for state in statesDict.keys()])
+        
+        self.dlgState.progressBar.setMaximum(100)
+        self.dlgState.progressBar.setValue(0)
+
+        # show the dialog
+        self.dlgState.show()
+        # Run the dialog event loop
+        result = self.dlgState.exec_()
+        # See if OK was pressed
+        if result:
+            # Do something useful here - delete the line containing pass and
+            # substitute with your code.
+            fips = statesDict[self.dlgState.comboBoxState.currentText()]['fips']
+            dest = self.dir
+            self.getStateData(fips, dest)
+            
+            
+    def getStateData(self, fips, dest):
+        url = QUrl(f"https://nsi.sec.usace.army.mil/downloads/nsi_2022/nsi_2022_{fips}.gpkg.zip")
+        saveName = f"nsi_2022_{fips}.gpkg.zip"
+        fullPath = f"{dest}\{saveName}"
+        self.filename = fullPath
+        self.load_to_canvas = True
+        req = QNetworkRequest(url)
+        reply = self.nam.get(req)
+    
     def run(self):
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
-            self.first_start = False
+            #self.first_start = False
             self.dlg = GetNSIDataDialog()
 
         # show the dialog

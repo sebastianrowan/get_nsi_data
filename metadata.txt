@@ -12,8 +12,8 @@ email=sebastian.rowan@unh.edu
 
 about=This plugin downloads data from the U.S. National Structures Inventory for a specified state or region.
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/sebastianrowan/get_nsi_data/issues
+repository=https://github.com/sebastianrowan/get_nsi_data
 # End of mandatory metadata
 
 # Recommended items:
@@ -25,8 +25,9 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python
 
-homepage=http://homepage
-category=Plugins
+homepage=https://github.com/sebastianrowan/get_nsi_data
+category=Web 
+
 icon=icon.png
 # experimental flag
 experimental=True
