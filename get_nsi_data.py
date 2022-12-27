@@ -64,9 +64,7 @@ class GetNSIData:
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
         
-        self.dir = tempfile.gettempdir()
-        self.nam = QNetworkAccessManager()
-        self.nam.finished.connect(self.reply_finished)    
+        self.dir = tempfile.gettempdir() 
         
         
         # Declare instance attributes
@@ -202,78 +200,10 @@ class GetNSIData:
         folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
         self.dlgState.stateSaveLine.setText(folderName)
         self.updateDir()
-     
-    def reply_finished(self, reply):
-        if reply != None:
-            possibleRedirectUrl = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
-            
-        # If the URL is not empty, we're being redirected. 
-            if possibleRedirectUrl != None:
-                request = QNetworkRequest(possibleRedirectUrl)
-                result = self.nam.get(request)  
-                result.downloadProgress.connect(lambda done,  all,  reply=result: self.progress(done,  all,  reply))
-            else:             
-                if reply.error() != None and reply.error() != QNetworkReply.NoError:
-                    self.is_error = reply.errorString()
-                    reply.abort()
-                    reply.deleteLater() # *** What does this do?
-                        
-                elif reply.error() ==  QNetworkReply.NoError:
-                    result = reply.readAll()
-                    f = open(self.filename, 'wb')
-                    f.write(result)
-                    f.close()      
-                    
-                    out_gpkg = self.unzip(self.filename)
-                    (dir, file) = os.path.split(out_gpkg)
-                    
-                    try:
-                        if not self.layer_exists(file):
-                            self.iface.addVectorLayer(out_gpkg, file, 'ogr')
-                    except:
-                        pass
-                        
-                    
-                    self.iface.messageBar().pushMessage(
-                        "Success", f"Downloaded file saved at {self.dir}",
-                        level=Qgis.Success, duration=5
-                    )
-                        
-                # Clean up. */
-                    reply.deleteLater()
-                    
-    def layer_exists(self,  name):            
-        # Return True if layer of given name exists in current instance.
-        if len(QgsProject.instance().mapLayersByName(name)) != 0:
-            return True
-        else:
-            return False
-            
-    def unzip(self,  zipFile):
-        import zipfile
-        (dir, file) = os.path.split(zipFile)
-
-        if not dir.endswith(':') and not os.path.exists(dir):
-            os.mkdir(dir)
-        
-        try:
-            zf = zipfile.ZipFile(zipFile)
-    
-            # extract files to directory structure
-            for i, name in enumerate(zf.namelist()):
-                if not name.endswith('/'):
-                    outfile = open(os.path.join(dir, name), 'wb')
-                    outfile.write(zf.read(name))
-                    outfile.flush()
-                    outfile.close()
-                    return os.path.join(dir, name)
-        except:
-            return None
-            
             
     def runState(self):
         """Run method that performs all the real work"""
-        self.dlgState = GetStateNSIDataDialog()
+        self.dlgState = GetStateNSIDataDialog(self.iface)
         self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
         self.dlgState.stateSaveLine.textChanged.connect(self.updateDir)
         
@@ -347,17 +277,9 @@ class GetNSIData:
             # substitute with your code.
             fips = statesDict[self.dlgState.comboBoxState.currentText()]['fips']
             dest = self.dir
-            self.getStateData(fips, dest)
+            # self.getStateData(fips, dest)
+            self.dlgState.downloader.get_state_data(fips, dest)
             
-            
-    def getStateData(self, fips, dest):
-        url = QUrl(f"https://nsi.sec.usace.army.mil/downloads/nsi_2022/nsi_2022_{fips}.gpkg.zip")
-        saveName = f"nsi_2022_{fips}.gpkg.zip"
-        fullPath = f"{dest}\{saveName}"
-        self.filename = fullPath
-        self.load_to_canvas = True
-        req = QNetworkRequest(url)
-        reply = self.nam.get(req)
     
     def run(self):
         """Run method that performs all the real work"""

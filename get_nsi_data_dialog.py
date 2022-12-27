@@ -26,6 +26,7 @@ import os
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
+from .nsiDownload import StateDownload
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -47,12 +48,14 @@ FORM_CLASS_STATE, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'get_state_nsi_data_dialog_base.ui'))
 
 class GetStateNSIDataDialog(QtWidgets.QDialog, FORM_CLASS_STATE):
-    def __init__(self, parent=None):
+    def __init__(cls, iface, parent=None):
         """Constructor."""
-        super(GetStateNSIDataDialog, self).__init__(parent)
+        super(GetStateNSIDataDialog, cls).__init__(parent)
         # Set up the user interface from Designer through FORM_CLASS.
-        # After self.setupUi() you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
+        # After cls.setupUi() you can access any designer object by doing
+        # cls.<objectname>, and you can use autoconnect slots - see
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
-        self.setupUi(self)
+        cls.setupUi(cls)
+        cls.iface = iface
+        cls.downloader = StateDownload(cls, cls.iface)
