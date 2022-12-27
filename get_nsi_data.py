@@ -194,14 +194,16 @@ class GetNSIData:
                 self.tr(u'&Get NSI Data'),
                 action)
             self.iface.removeToolBarIcon(action)
-
+    
+    def updateDir(self):
+        self.dir = self.dlgState.stateSaveLine.text()
+    
     def selectStateOutputFolder(self):
         folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
         self.dlgState.stateSaveLine.setText(folderName)
-        self.dir = folderName
+        self.updateDir()
      
-    def reply_finished(self, reply):    
-        
+    def reply_finished(self, reply):
         if reply != None:
             possibleRedirectUrl = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
             
@@ -238,24 +240,24 @@ class GetNSIData:
                     )
                         
                 # Clean up. */
-                    reply.deleteLater()# *** What does this do?
+                    reply.deleteLater()
                     
     def layer_exists(self,  name):            
-        
+        # Return True if layer of given name exists in current instance.
         if len(QgsProject.instance().mapLayersByName(name)) != 0:
             return True
         else:
             return False
             
-    def unzip(self,  zip_file):
+    def unzip(self,  zipFile):
         import zipfile
-        (dir, file) = os.path.split(zip_file)
+        (dir, file) = os.path.split(zipFile)
 
         if not dir.endswith(':') and not os.path.exists(dir):
             os.mkdir(dir)
         
         try:
-            zf = zipfile.ZipFile(zip_file)
+            zf = zipfile.ZipFile(zipFile)
     
             # extract files to directory structure
             for i, name in enumerate(zf.namelist()):
@@ -268,26 +270,13 @@ class GetNSIData:
         except:
             return None
             
-    def set_progress(self,  akt_val=None,  all_val=None):
-        if all_val == None:
-            progress_value = self.dlgState.progressBar.value() + 10
-            self.dlgState.progressBar.setValue(progress_value)
-            
-        else:
-            self.dlgState.progressBar.setMaximum(all_val)
-            self.dlgState.progressBar.setValue(akt_val)
             
     def runState(self):
         """Run method that performs all the real work"""
-
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
-            #self.first_start = False
-            self.dlgState = GetStateNSIDataDialog()
-            self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
+        self.dlgState = GetStateNSIDataDialog()
+        self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
+        self.dlgState.stateSaveLine.textChanged.connect(self.updateDir)
         
-        # In future, move this to external file and load in
         statesDict = {
             'Alabama': {'abbr':'AL', 'fips':'01'},
             'Alaska': {'abbr':'AK', 'fips':'02'},
@@ -347,8 +336,6 @@ class GetNSIData:
         # Populate the comboBox with state names
         self.dlgState.comboBoxState.addItems([state for state in statesDict.keys()])
         
-        self.dlgState.progressBar.setMaximum(100)
-        self.dlgState.progressBar.setValue(0)
 
         # show the dialog
         self.dlgState.show()
