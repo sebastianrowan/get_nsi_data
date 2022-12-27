@@ -37,7 +37,7 @@ class StateDownload:
         cls.iface = iface
         cls.nam = QNetworkAccessManager()
         cls.nam.finished.connect(cls.reply_finished)
-        #cls.shown = False
+        # https://docs.qgis.org/2.8/en/docs/pyqgis_developer_cookbook/communicating.html#showing-progress
 
     def reply_finished(cls, reply):
         if reply != None:
@@ -110,26 +110,58 @@ class StateDownload:
         fullPath = f"{dest}\{saveName}"
         cls.dir = dest
         cls.filename = fullPath
-        cls.load_to_canvas = True
+        #cls.load_to_canvas = True
         req = QNetworkRequest(url)
         reply = cls.nam.get(req)
 
 
 class APIDownload:
 
-    def __init__{cls, parent=None, iface=None):
+    def __init__(cls, parent=None, iface=None):
         cls.parent = parent
         cls.iface = iface
+        cls.root_url = "https://nsi.sec.usace.army.mil/nsiapi/structures"
         cls.nam = QNetworkAccessManager()
-        cls.nam.finished.connect(cls.reply_finished)
+        cls.nam.finished.connect(cls.api_reply_finished)
         
     def api_reply_finished(cls, reply):
         if reply.error() != None and reply.error() != QNetworkReply.NoError:
             cls.is_error = reply.errorString()
+            cls.iface.messageBar().pushMessage(
+                        "Error", cls.is_error,
+                        level=Qgis.Critical
+                    )
             reply.abort()
             reply.deleteLater()
                 
         elif reply.error() ==  QNetworkReply.NoError:
             result = reply.readAll() # result should be JSON response from API
-                            
+            
+            f = open(cls.filename, 'wb')
+            f.write(result)
+            f.close()
+            
+            (dir, file) = os.path.split(cls.filename)
+            try:
+                if not cls.layer_exists(file):
+                    cls.iface.addVectorLayer(cls.filename, file, 'ogr')
+            except:
+                pass
+            
             reply.deleteLater()
+            
+    def layer_exists(cls,  name):            
+        # Return True if layer of given name exists in current instance.
+        if len(QgsProject.instance().mapLayersByName(name)) != 0:
+            return True
+        else:
+            return False
+            
+    def get_structs_fips(cls, fips, dest, saveAs='.geojson'):
+        url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
+        saveName = f"nsi_2022_{fips}{saveAs}"
+        fullPath = f"{dest}\{saveName}"
+        cls.dir = dest
+        cls.filename = fullPath
+        req = QNetworkRequest(url)
+        reply = cls.nam.get(req)
