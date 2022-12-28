@@ -44,7 +44,7 @@ class GetNSIDataDialog(QtWidgets.QDialog, FORM_CLASS):
         cls.setupUi(cls)
         cls.iface = iface
         cls.downloader = APIDownload(cls, cls.iface)
-
+    
 
 FORM_CLASS_STATE, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'get_state_nsi_data_dialog_base.ui'))

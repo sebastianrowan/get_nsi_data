@@ -158,10 +158,13 @@ class APIDownload:
             return False
             
     def get_structs_fips(cls, fips, dest, saveAs='.geojson'):
-        url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
-        saveName = f"nsi_2022_{fips}{saveAs}"
-        fullPath = f"{dest}\{saveName}"
-        cls.dir = dest
-        cls.filename = fullPath
-        req = QNetworkRequest(url)
-        reply = cls.nam.get(req)
+        if fips is None:
+            pass
+        else:
+            url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
+            saveName = f"nsi_2022_{fips}{saveAs}"
+            fullPath = f"{dest}\{saveName}"
+            cls.dir = dest
+            cls.filename = fullPath
+            req = QNetworkRequest(url)
+            reply = cls.nam.get(req)

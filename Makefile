@@ -48,7 +48,7 @@ PY_FILES = \
 
 UI_FILES = get_nsi_data_dialog_base.ui
 
-EXTRAS = metadata.txt icon.png
+EXTRAS = metadata.txt icon.png tracts_nested.json
 
 EXTRA_DIRS =
 

@@ -29,11 +29,13 @@ from qgis.core import QgsProject, Qgis
 import os
 import os.path
 import tempfile
+import json
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 from .get_nsi_data_dialog import GetNSIDataDialog, GetStateNSIDataDialog
+from .census_objects import State, County, Tract
 
 
 
@@ -65,7 +67,8 @@ class GetNSIData:
             QCoreApplication.installTranslator(self.translator)
         
         self.dir = tempfile.gettempdir() 
-        
+        self.states = self.get_states()
+        self.fips = None
         
         # Declare instance attributes
         self.actions = []
@@ -178,13 +181,13 @@ class GetNSIData:
         self.add_action(
             icon_path,
             text=self.tr(u'Get FIPS NSI Data'),
-            callback=self.run,
+            callback=self.runFips,
             parent=self.iface.mainWindow())
             
         # will be set False in run()
         self.first_start = True
 
-
+    
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -196,6 +199,36 @@ class GetNSIData:
     def updateDir(self):
         self.dir = self.dlgState.stateSaveLine.text()
     
+    def get_states(self):
+        
+        # Read in states, counties, and tracts with their fips codes
+        json_file_path = os.path.join(
+            self.plugin_dir,
+            "tracts_nested.json"
+            ).replace('\\','/') # just putting the file name in the open call causes error. Need better solution.
+        f = open(json_file_path)
+        data = json.loads(f.read())
+        
+        states = {}
+        for i in data:
+            state_name = i['state_name']
+            state_fips = i['state_fips']
+            state_counties = {}
+            for j in i['counties']:
+                county_name = j['county_name']
+                county_fips = j['county_fips']
+                county_tracts = {"Use County FIPS": Tract("Use County Fips", county_fips)}
+                for k in j['tracts']:
+                    tract_name = k['tract_name']
+                    tract_fips = k['tract_fips']
+                    tract_k = Tract(tract_name, tract_fips)
+                    county_tracts[tract_name] = tract_k
+                county_j = County(county_name, county_fips, county_tracts)
+                state_counties[county_name] = county_j
+            state_i = State(state_name, state_fips, state_counties)
+            states[state_name] = state_i
+        return(states)    
+    
     def selectStateOutputFolder(self):
         folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
         self.dlgState.stateSaveLine.setText(folderName)
@@ -204,67 +237,15 @@ class GetNSIData:
     def runState(self):
         """Run method that performs all the real work"""
         self.dlgState = GetStateNSIDataDialog(self.iface)
+        self.dir = tempfile.gettempdir()
         self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
         self.dlgState.stateSaveLine.textChanged.connect(self.updateDir)
         
-        statesDict = {
-            'Alabama': {'abbr':'AL', 'fips':'01'},
-            'Alaska': {'abbr':'AK', 'fips':'02'},
-            'Arizona': {'abbr':'AZ', 'fips':'04'},
-            'Arkansas': {'abbr':'AR', 'fips':'05'},
-            'California': {'abbr':'CA', 'fips':'06'},
-            'Colorado': {'abbr':'CO', 'fips':'08'},
-            'Connecticut': {'abbr':'CT', 'fips':'09'},
-            'Delaware': {'abbr':'DE', 'fips':'10'},
-            'District of Columbia': {'abbr':'DC', 'fips':'11'},
-            'Florida': {'abbr':'FL', 'fips':'12'},
-            'Georgia': {'abbr':'GA', 'fips':'13'},
-            'Hawaii': {'abbr':'HI', 'fips':'15'},
-            'Idaho': {'abbr':'ID', 'fips':'16'},
-            'Illinois': {'abbr':'IL', 'fips':'17'},
-            'Indiana': {'abbr':'IN', 'fips':'18'},
-            'Iowa': {'abbr':'IA', 'fips':'19'},
-            'Kansas': {'abbr':'KS', 'fips':'20'},
-            'Kentucky': {'abbr':'KY', 'fips':'21'},
-            'Louisiana': {'abbr':'LA', 'fips':'22'},
-            'Maine': {'abbr':'ME', 'fips':'23'},
-            'Maryland': {'abbr':'MD', 'fips':'24'},
-            'Massachusetts': {'abbr':'MA', 'fips':'25'},
-            'Michigan': {'abbr':'MI', 'fips':'26'},
-            'Minnesota': {'abbr':'MN', 'fips':'27'},
-            'Mississippi': {'abbr':'MS', 'fips':'28'},
-            'Missouri': {'abbr':'MO', 'fips':'29'},
-            'Montana': {'abbr':'MT', 'fips':'30'},
-            'Nebraska': {'abbr':'NE', 'fips':'31'},
-            'Nevada': {'abbr':'NV', 'fips':'32'},
-            'New Hampshire': {'abbr':'NH', 'fips':'33'},
-            'New Jersey': {'abbr':'NJ', 'fips':'34'},
-            'New Mexico': {'abbr':'NM', 'fips':'35'},
-            'New York': {'abbr':'NY', 'fips':'36'},
-            'North Carolina': {'abbr':'NC', 'fips':'37'},
-            'North Dakota': {'abbr':'ND', 'fips':'38'},
-            'Ohio': {'abbr':'OH', 'fips':'39'},
-            'Oklahoma': {'abbr':'OK', 'fips':'40'},
-            'Oregon': {'abbr':'OR', 'fips':'41'},
-            'Pennsylvania': {'abbr':'PA', 'fips':'42'},
-            'Rhode Island': {'abbr':'RI', 'fips':'44'},
-            'South Carolina': {'abbr':'SC', 'fips':'45'},
-            'South Dakota': {'abbr':'SD', 'fips':'46'},
-            'Tennessee': {'abbr':'TN', 'fips':'47'},
-            'Texas': {'abbr':'TX', 'fips':'48'},
-            'Utah': {'abbr':'UT', 'fips':'49'},
-            'Vermont': {'abbr':'VT', 'fips':'50'},
-            'Virginia': {'abbr':'VA', 'fips':'51'},
-            'Washington': {'abbr':'WA', 'fips':'53'},
-            'West Virginia': {'abbr':'WV', 'fips':'54'},
-            'Wisconsin': {'abbr':'WI', 'fips':'55'},
-            'Wyoming': {'abbr':'WY', 'fips':'56'}
-        }
         
         # Clear the contents of the state comboBox from previous runs
         self.dlgState.comboBoxState.clear()
         # Populate the comboBox with state names
-        self.dlgState.comboBoxState.addItems([state for state in statesDict.keys()])
+        self.dlgState.comboBoxState.addItems([state for state in self.states.keys()])
         
 
         # show the dialog
@@ -275,26 +256,82 @@ class GetNSIData:
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
-            fips = statesDict[self.dlgState.comboBoxState.currentText()]['fips']
+            fips = self.states[self.dlgState.comboBoxState.currentText()].fips[0]
+            print(f"fips: {fips}")
             dest = self.dir
             # self.getStateData(fips, dest)
             self.dlgState.downloader.get_state_data(fips, dest)
             
     
-    def run(self):
+    def runFips(self):
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        self.dlg = GetNSIDataDialog(self.iface)
-
+        self.dlgFips = GetNSIDataDialog(self.iface)
+        self.dir = tempfile.gettempdir()
+        self.dlgFips.fipsFolderButton.clicked.connect(self.fips_select_output_folder)
+        self.dlgFips.fipsSaveLine.textChanged.connect(self.fips_update_dir)
+        self.dlgFips.comboBoxState.addItems([state for state in self.states.keys()])
+        self.fips_update_combo_box_county()
+        self.fips_update_combo_box_tract()
+        self.fips_update_label()
+        
+        self.dlgFips.comboBoxState.currentTextChanged.connect(self.fips_update_combo_box_county)
+        self.dlgFips.comboBoxCounty.currentTextChanged.connect(self.fips_update_combo_box_tract)
+        self.dlgFips.comboBoxTract.currentTextChanged.connect(self.fips_update_label)
+        
         # show the dialog
-        self.dlg.show()
+        self.dlgFips.show()
         # Run the dialog event loop
-        result = self.dlg.exec_()
+        result = self.dlgFips.exec_()
         # See if OK was pressed
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
-            self.dlg.downloader.get_structs_fips('33007', "C:/Users/sbs44/Desktop/junk")
+            self.dlgFips.downloader.get_structs_fips(self.fips, self.dir)
             pass
+    
+    def fips_update_combo_box_county(self):
+        self.dlgFips.comboBoxCounty.clear()
+        state = self.dlgFips.comboBoxState.currentText()
+        counties = self.states[state].counties.keys()
+        self.dlgFips.comboBoxCounty.addItems([county for county in counties])
+        
+    def fips_update_combo_box_tract(self):
+        state = self.dlgFips.comboBoxState.currentText()
+        county = self.dlgFips.comboBoxCounty.currentText()
+        self.dlgFips.comboBoxTract.clear()
+        counties = self.states.get(state).counties
+        county_get = counties.get(county)
+        if county_get is None:
+            # This function also gets called when the county box is cleared when a new state is selected.
+            # This would an AttributeError when trying to get the tracts
+            pass
+        else:
+            tracts = county_get.tracts.keys()
+            self.dlgFips.comboBoxTract.addItems(tracts)
+            
+    def fips_update_label(self):
+        state = self.dlgFips.comboBoxState.currentText()
+        county = self.dlgFips.comboBoxCounty.currentText()
+        tract = self.dlgFips.comboBoxTract.currentText()
+        county_get = self.states.get(state).counties.get(county)
+        if county_get is None:
+            pass
+        else:
+            tract_get = county_get.tracts.get(tract)
+            if tract_get is None:
+                pass
+            else:
+                self.dlgFips.labelFips.setText(tract_get.fips)
+                self.fips = tract_get.fips
+                
+    def fips_select_output_folder(self):
+        folder_name = QFileDialog.getExistingDirectory(self.dlgFips, "Select output folder")
+        self.dlgFips.fipsSaveLine.setText(folder_name)
+        self.fips_update_dir()
+        
+    def fips_update_dir(self):
+        self.dir = self.dlgFips.fipsSaveLine.text()
+        
