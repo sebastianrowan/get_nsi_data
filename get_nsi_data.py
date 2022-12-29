@@ -34,7 +34,7 @@ import json
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .get_nsi_data_dialog import GetNSIDataDialog, GetStateNSIDataDialog
+from .get_nsi_data_dialog import GetNSIDataDialog, GetStateNSIDataDialog, GetBboxNSIDataDialog
 from .census_objects import State, County, Tract
 
 
@@ -174,14 +174,20 @@ class GetNSIData:
         icon_path = ':/plugins/get_nsi_data/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Get State NSI Data'),
+            text=self.tr(u'Get NSI Data by State'),
             callback=self.runState,
             parent=self.iface.mainWindow())
 
         self.add_action(
             icon_path,
-            text=self.tr(u'Get FIPS NSI Data'),
+            text=self.tr(u'Get NSI Data by FIPS'),
             callback=self.runFips,
+            parent=self.iface.mainWindow())
+            
+        self.add_action(
+            icon_path,
+            text=self.tr(u'Get NSI Data by Bounding Box'),
+            callback=self.runBbox,
             parent=self.iface.mainWindow())
             
         # will be set False in run()
@@ -292,6 +298,24 @@ class GetNSIData:
             self.dlgFips.downloader.get_structs_fips(self.fips, self.dir)
             pass
     
+    def runBbox(self):
+        """Run method that performs all the real work"""
+
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        self.dlgBbox = GetBboxNSIDataDialog(self.iface)
+        self.dir = tempfile.gettempdir()
+        
+        # show the dialog
+        self.dlgBbox.show()
+        # Run the dialog event loop
+        result = self.dlgBbox.exec_()
+        # See if OK was pressed
+        if result:
+            # Do something useful here - delete the line containing pass and
+            # substitute with your code.
+            pass
+    
     def fips_update_combo_box_county(self):
         self.dlgFips.comboBoxCounty.clear()
         state = self.dlgFips.comboBoxState.currentText()
@@ -334,4 +358,5 @@ class GetNSIData:
         
     def fips_update_dir(self):
         self.dir = self.dlgFips.fipsSaveLine.text()
+        
         

@@ -45,6 +45,22 @@ class GetNSIDataDialog(QtWidgets.QDialog, FORM_CLASS):
         cls.iface = iface
         cls.downloader = APIDownload(cls, cls.iface)
     
+FORM_CLASS_BBOX, _ = uic.loadUiType(os.path.join(
+    os.path.dirname(__file__), 'get_bbox_nsi_data_dialog_base.ui'))  
+
+class GetBboxNSIDataDialog(QtWidgets.QDialog, FORM_CLASS_BBOX):
+    def __init__(cls, iface, parent=None):
+        """Constructor."""
+        super(GetBboxNSIDataDialog, cls).__init__(parent)
+        # Set up the user interface from Designer through FORM_CLASS_BBOX.
+        # After cls.setupUi() you can access any designer object by doing
+        # cls.<objectname>, and you can use autoconnect slots - see
+        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
+        # #widgets-and-dialogs-with-auto-connect
+        cls.setupUi(cls)
+        cls.iface = iface
+        cls.downloader = APIDownload(cls, cls.iface)
+
 
 FORM_CLASS_STATE, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'get_state_nsi_data_dialog_base.ui'))
@@ -53,7 +69,7 @@ class GetStateNSIDataDialog(QtWidgets.QDialog, FORM_CLASS_STATE):
     def __init__(cls, iface, parent=None):
         """Constructor."""
         super(GetStateNSIDataDialog, cls).__init__(parent)
-        # Set up the user interface from Designer through FORM_CLASS.
+        # Set up the user interface from Designer through FORM_CLASS_STATE.
         # After cls.setupUi() you can access any designer object by doing
         # cls.<objectname>, and you can use autoconnect slots - see
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html

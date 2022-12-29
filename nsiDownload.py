@@ -121,6 +121,7 @@ class APIDownload:
         cls.parent = parent
         cls.iface = iface
         cls.root_url = "https://nsi.sec.usace.army.mil/nsiapi/structures"
+        cls.stats_url = "https://nsi.sec.usace.army.mil/nsiapi/stats"
         cls.nam = QNetworkAccessManager()
         cls.nam.finished.connect(cls.api_reply_finished)
         
@@ -161,10 +162,38 @@ class APIDownload:
         if fips is None:
             pass
         else:
-            url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
+            url = QUrl(f"{cls.stats_url}?fips={fips}&fmt=fs")
             saveName = f"nsi_2022_{fips}{saveAs}"
             fullPath = f"{dest}\{saveName}"
             cls.dir = dest
             cls.filename = fullPath
             req = QNetworkRequest(url)
             reply = cls.nam.get(req)
+            
+    def get_structs_bbox(cls, bbox, dest, filename ,saveAs='.geojson'):
+        if bbox is None:
+            pass
+        elif len(bbox == 0):
+            pass
+        else:
+            url = QUrl(f"{cls.root_url}?bbox={bbox}&fmt=fs")
+            fullPath = f"{dest}\{saveName}"
+            cls.dir = dest
+            cls.filename = fullPath
+            req = QNetworkRequest(url)
+            reply = cls.nam.get(req)
+            
+    def get_stats_bbox(cls, bbox, dest, filename ,saveAs='.json'):
+        if bbox is None:
+            pass
+        elif len(bbox == 0):
+            pass
+        else:
+            url = QUrl(f"{cls.root_url}?bbox={bbox}")
+            fullPath = f"{dest}\{saveName}"
+            cls.dir = dest
+            cls.filename = fullPath
+            req = QNetworkRequest(url)
+            reply = cls.nam.get(req)
+            
+            
