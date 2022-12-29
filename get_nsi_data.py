@@ -211,7 +211,7 @@ class GetNSIData:
         json_file_path = os.path.join(
             self.plugin_dir,
             "tracts_nested.json"
-            ).replace('\\','/') # just putting the file name in the open call causes error. Need better solution.
+            ).replace('\\','/') # There must be a better solution for dealing with slash types here.
         f = open(json_file_path)
         data = json.loads(f.read())
         
