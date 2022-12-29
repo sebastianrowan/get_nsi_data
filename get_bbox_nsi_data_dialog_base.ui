@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>563</width>
-    <height>351</height>
+    <height>461</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -52,7 +52,14 @@
        </spacer>
       </item>
       <item row="1" column="1">
-       <widget class="QDoubleSpinBox" name="spinBoxNorth"/>
+       <widget class="QDoubleSpinBox" name="spinBoxNorth">
+        <property name="minimum">
+         <double>-90.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>90.000000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="4" column="2">
        <spacer name="horizontalSpacer_10">
@@ -81,7 +88,14 @@
        </spacer>
       </item>
       <item row="3" column="2">
-       <widget class="QDoubleSpinBox" name="spinBoxEast"/>
+       <widget class="QDoubleSpinBox" name="spinBoxEast">
+        <property name="minimum">
+         <double>-180.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>180.000000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="0" column="1">
        <widget class="QLabel" name="labelNorth">
@@ -143,7 +157,14 @@
        </spacer>
       </item>
       <item row="3" column="0">
-       <widget class="QDoubleSpinBox" name="spinBoxWest"/>
+       <widget class="QDoubleSpinBox" name="spinBoxWest">
+        <property name="minimum">
+         <double>-180.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>180.000000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="4" column="1">
        <widget class="QLabel" name="labelSouth">
@@ -195,7 +216,14 @@
        </spacer>
       </item>
       <item row="5" column="1">
-       <widget class="QDoubleSpinBox" name="spinBoxSouth"/>
+       <widget class="QDoubleSpinBox" name="spinBoxSouth">
+        <property name="minimum">
+         <double>-90.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>90.000000000000000</double>
+        </property>
+       </widget>
       </item>
       <item row="0" column="0">
        <spacer name="horizontalSpacer_6">
@@ -252,7 +280,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton">
+       <widget class="QCheckBox" name="checkBox">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -268,7 +296,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton_2">
+       <widget class="QCheckBox" name="checkBox_2">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -296,7 +324,7 @@
      </layout>
     </item>
     <item>
-     <layout class="QGridLayout" name="gridLayout" columnstretch="1,4">
+     <layout class="QGridLayout" name="gridLayout" columnstretch="1,5">
       <item row="0" column="0">
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -328,17 +356,69 @@
      </layout>
     </item>
     <item>
-     <widget class="QDialogButtonBox" name="button_box">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="standardButtons">
-       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-      </property>
-      <property name="centerButtons">
-       <bool>true</bool>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2,2,1">
+      <item>
+       <spacer name="horizontalSpacer_13">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="dlButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Download</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDialogButtonBox" name="button_box">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="standardButtons">
+         <set>QDialogButtonBox::Close</set>
+        </property>
+        <property name="centerButtons">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_14">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>

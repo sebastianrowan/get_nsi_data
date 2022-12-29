@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QUrl
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
+from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply,  QNetworkAccessManager
 from qgis.core import QgsProject, Qgis
 import os
@@ -306,6 +306,11 @@ class GetNSIData:
         self.dlgBbox = GetBboxNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
         
+        self.dlgBbox.spinBoxEast.valueChanged.connect(self.bbox_validate_coords)
+        self.dlgBbox.spinBoxWest.valueChanged.connect(self.bbox_validate_coords)
+        self.dlgBbox.spinBoxNorth.valueChanged.connect(self.bbox_validate_coords)
+        self.dlgBbox.spinBoxSouth.valueChanged.connect(self.bbox_validate_coords)
+        
         # show the dialog
         self.dlgBbox.show()
         # Run the dialog event loop
@@ -359,4 +364,56 @@ class GetNSIData:
     def fips_update_dir(self):
         self.dir = self.dlgFips.fipsSaveLine.text()
         
+    def bbox_validate_coords(self):
+        # I think the following are true:
+        #   south must be less than north
+        #   west must be less than east 
+        #   Will have to prevent or handle bbox crossing int'l dateline. 
+        north = self.dlgBbox.spinBoxNorth.value()
+        south = self.dlgBbox.spinBoxSouth.value()
+        east = self.dlgBbox.spinBoxEast.value()
+        west = self.dlgBbox.spinBoxWest.value()
+        # check CONUS
+        if north > 49.4 and south > 49.4:
+            # Bbox is completely north of CONUS
+            # check Alaska
+            if north > 51.17 and north < 71.45 and south > 51.17 and east < -130 and west > -180:
+                # Bbox is within Alaska's bbox (may still be in western Canada)
+                self.dlgBbox.dlButton.setEnabled(True)
+            else:
+                self.dlgBbox.dlButton.setEnabled(False)
+                msg = QMessageBox.warning(
+                None,
+                self.tr("Bounding box outside U.S."),
+                self.tr("""The defined area is completely outside the United States."""),
+                QMessageBox.StandardButtons(
+                    QMessageBox.Cancel))
+        elif north < 23.39 and south < 23.39:
+            # Bbox is completely south of CONUS
+            # check Hawaii
+            if north > 18.86 and north < 28.518 and south > 18.86 and east < -154.755 and west > -178.45:
+                # Bbox is within Hawaii's bbox (may still not be over land)
+                self.dlgBbox.dlButton.setEnabled(True)
+            # check Puerto Rico
+            else:
+                self.dlgBbox.dlButton.setEnabled(False)
+                msg = QMessageBox.warning(
+                None,
+                self.tr("Bounding box outside U.S."),
+                self.tr("""The defined area is completely outside the United States."""),
+                QMessageBox.StandardButtons(
+                    QMessageBox.Cancel))
+        elif west > -124.85 and east < -66.88:
+            self.dlgBbox.dlButton.setEnabled(True)
+        else:
+            self.dlgBbox.dlButton.setEnabled(False)
+            msg = QMessageBox.warning(
+            None,
+            self.tr("Bounding box outside U.S."),
+            self.tr("""The defined area is completely outside the United States."""),
+            QMessageBox.StandardButtons(
+                QMessageBox.Cancel))
+            
+        
+        # check size
         
