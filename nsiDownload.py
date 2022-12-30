@@ -23,7 +23,6 @@
 """
 
 import os
-
 from qgis.core import QgsProject, Qgis
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
@@ -124,7 +123,11 @@ class APIDownload:
         cls.stats_url = "https://nsi.sec.usace.army.mil/nsiapi/stats"
         cls.nam = QNetworkAccessManager()
         cls.nam.finished.connect(cls.api_reply_finished)
+        cls.bbox_coords = None
+        cls.nam_bbox = QNetworkAccessManager()
+        cls.nam_bbox.finished.connect(cls.api_stat_reply_finished)
         
+    
     def api_reply_finished(cls, reply):
         if reply.error() != None and reply.error() != QNetworkReply.NoError:
             cls.is_error = reply.errorString()
@@ -150,6 +153,56 @@ class APIDownload:
                 pass
             
             reply.deleteLater()
+    
+    def api_stat_reply_finished(cls, reply):
+        if reply.error() != None and reply.error() != QNetworkReply.NoError:
+            cls.is_error = reply.errorString()
+            cls.iface.messageBar().pushMessage(
+                        "Error", cls.is_error,
+                        level=Qgis.Critical
+                    )
+            reply.abort()
+            reply.deleteLater()
+                
+        elif reply.error() ==  QNetworkReply.NoError:
+            result = reply.readAll().data().decode() # convert to plain text for adding to json file
+            geojson_output = cls.create_stats_geojson(result)
+            # modify json here into geojson with bbox coords and other required fields.
+            
+            with open(cls.filename, 'w') as f:
+                f.write(geojson_output)
+            
+            (dir, file) = os.path.split(cls.filename)
+            try:
+                if not cls.layer_exists(file):
+                    cls.iface.addVectorLayer(cls.filename, file, 'ogr')
+            except:
+                pass
+            
+            cls.bbox_coords = None
+            reply.deleteLater()
+    
+    def create_stats_geojson(cls, result):
+        json_text0 = """{
+            "type": "FeatureCollection",
+            "name": "NSI Stats Bounding Box",
+            "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+            "features": [
+            { "type": "Feature", 
+            "properties":
+            """
+        
+        json_text1 = """,
+            "geometry": { "type": "Polygon", "coordinates": [ [ 
+            """
+        
+        json_text2 = """ ] ] }
+            }
+            ]
+            }"""
+            
+        json_text = f"{json_text0}{result}{json_text1}{cls.bbox_coords}{json_text2}"
+        return(json_text)
             
     def layer_exists(cls,  name):            
         # Return True if layer of given name exists in current instance.
@@ -170,30 +223,23 @@ class APIDownload:
             req = QNetworkRequest(url)
             reply = cls.nam.get(req)
             
-    def get_structs_bbox(cls, bbox, dest, filename ,saveAs='.geojson'):
-        if bbox is None:
-            pass
-        elif len(bbox == 0):
-            pass
-        else:
-            url = QUrl(f"{cls.root_url}?bbox={bbox}&fmt=fs")
-            fullPath = f"{dest}\{saveName}"
-            cls.dir = dest
-            cls.filename = fullPath
-            req = QNetworkRequest(url)
-            reply = cls.nam.get(req)
-            
-    def get_stats_bbox(cls, bbox, dest, filename ,saveAs='.json'):
-        if bbox is None:
-            pass
-        elif len(bbox == 0):
-            pass
-        else:
-            url = QUrl(f"{cls.root_url}?bbox={bbox}")
-            fullPath = f"{dest}\{saveName}"
-            cls.dir = dest
-            cls.filename = fullPath
-            req = QNetworkRequest(url)
-            reply = cls.nam.get(req)
+    def get_structs_bbox(cls, bbox, dest ,saveAs='.geojson'):
+        url = QUrl(f"{cls.root_url}?bbox={bbox}&fmt=fs")
+        saveName = f"nsi_2022_bbox_{bbox}{saveAs}"
+        fullPath = f"{dest}\{saveName}"
+        cls.dir = dest
+        cls.filename = fullPath
+        req = QNetworkRequest(url)
+        reply = cls.nam.get(req)
+        
+    def get_stats_bbox(cls, bbox, coords, dest ,saveAs='.json'):
+        url = QUrl(f"{cls.stats_url}?bbox={bbox}")
+        saveName = f"nsi_2022_stats_bbox_{bbox}{saveAs}"
+        fullPath = f"{dest}\{saveName}"
+        cls.dir = dest
+        cls.filename = fullPath
+        cls.bbox_coords = coords
+        req = QNetworkRequest(url)
+        reply = cls.nam_bbox.get(req)
             
             

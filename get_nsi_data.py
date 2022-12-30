@@ -21,15 +21,16 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QUrl
+from qgis.PyQt.QtCore import pyqtSlot, QSettings, QTranslator, QCoreApplication, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply,  QNetworkAccessManager
-from qgis.core import QgsProject, Qgis
+from qgis.core import QgsProject, Qgis, QgsCoordinateReferenceSystem,  QgsCoordinateTransform
 import os
 import os.path
 import tempfile
 import json
+import math
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -212,27 +213,27 @@ class GetNSIData:
             self.plugin_dir,
             "tracts_nested.json"
             ).replace('\\','/') # There must be a better solution for dealing with slash types here.
-        f = open(json_file_path)
-        data = json.loads(f.read())
-        
-        states = {}
-        for i in data:
-            state_name = i['state_name']
-            state_fips = i['state_fips']
-            state_counties = {}
-            for j in i['counties']:
-                county_name = j['county_name']
-                county_fips = j['county_fips']
-                county_tracts = {"Use County FIPS": Tract("Use County Fips", county_fips)}
-                for k in j['tracts']:
-                    tract_name = k['tract_name']
-                    tract_fips = k['tract_fips']
-                    tract_k = Tract(tract_name, tract_fips)
-                    county_tracts[tract_name] = tract_k
-                county_j = County(county_name, county_fips, county_tracts)
-                state_counties[county_name] = county_j
-            state_i = State(state_name, state_fips, state_counties)
-            states[state_name] = state_i
+        with open(json_file_path) as f:
+            data = json.loads(f.read())
+            
+            states = {}
+            for i in data:
+                state_name = i['state_name']
+                state_fips = i['state_fips']
+                state_counties = {}
+                for j in i['counties']:
+                    county_name = j['county_name']
+                    county_fips = j['county_fips']
+                    county_tracts = {"Use County FIPS": Tract("Use County Fips", county_fips)}
+                    for k in j['tracts']:
+                        tract_name = k['tract_name']
+                        tract_fips = k['tract_fips']
+                        tract_k = Tract(tract_name, tract_fips)
+                        county_tracts[tract_name] = tract_k
+                    county_j = County(county_name, county_fips, county_tracts)
+                    state_counties[county_name] = county_j
+                state_i = State(state_name, state_fips, state_counties)
+                states[state_name] = state_i
         return(states)    
     
     def selectStateOutputFolder(self):
@@ -306,10 +307,9 @@ class GetNSIData:
         self.dlgBbox = GetBboxNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
         
-        self.dlgBbox.spinBoxEast.valueChanged.connect(self.bbox_validate_coords)
-        self.dlgBbox.spinBoxWest.valueChanged.connect(self.bbox_validate_coords)
-        self.dlgBbox.spinBoxNorth.valueChanged.connect(self.bbox_validate_coords)
-        self.dlgBbox.spinBoxSouth.valueChanged.connect(self.bbox_validate_coords)
+        self.dlgBbox.extentButtonCanvas.clicked.connect(self.bbox_get_canvas_extent)
+        
+        self.dlgBbox.dlButton.clicked.connect(self.bbox_validate_coords)
         
         # show the dialog
         self.dlgBbox.show()
@@ -363,6 +363,22 @@ class GetNSIData:
         
     def fips_update_dir(self):
         self.dir = self.dlgFips.fipsSaveLine.text()
+    
+    def bbox_get_canvas_extent(self):
+        request_crs = QgsCoordinateReferenceSystem("EPSG:4326")  # WGS84
+        canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+        
+        crs_transform = QgsCoordinateTransform()
+        crs_transform.setSourceCrs(canvas_crs)
+        crs_transform.setDestinationCrs(request_crs)
+            
+        extent = crs_transform.transform(self.iface.mapCanvas().extent())        
+        
+        
+        self.dlgBbox.spinBoxNorth.setValue(extent.yMaximum())
+        self.dlgBbox.spinBoxSouth.setValue(extent.yMinimum())
+        self.dlgBbox.spinBoxEast.setValue(extent.xMaximum())
+        self.dlgBbox.spinBoxWest.setValue(extent.xMinimum())
         
     def bbox_validate_coords(self):
         # I think the following are true:
@@ -373,15 +389,24 @@ class GetNSIData:
         south = self.dlgBbox.spinBoxSouth.value()
         east = self.dlgBbox.spinBoxEast.value()
         west = self.dlgBbox.spinBoxWest.value()
+        bbox = f"{west},{south},{west},{north},{east},{north},{east},{south},{west},{south}"
+        coords = f"[{west},{south}],[{west},{north}],[{east},{north}],[{east},{south}],[{west},{south}]"
+        
+        option = None
+        if self.dlgBbox.radioButtonStruct.isChecked():
+            option = "struct"
+        else:
+            option = "stat"
+            
         # check CONUS
         if north > 49.4 and south > 49.4:
             # Bbox is completely north of CONUS
             # check Alaska
             if north > 51.17 and north < 71.45 and south > 51.17 and east < -130 and west > -180:
                 # Bbox is within Alaska's bbox (may still be in western Canada)
-                self.dlgBbox.dlButton.setEnabled(True)
+                self.bbox_download(bbox, option)
+            # add elif to check if partially outside AK bbox
             else:
-                self.dlgBbox.dlButton.setEnabled(False)
                 msg = QMessageBox.warning(
                 None,
                 self.tr("Bounding box outside U.S."),
@@ -393,10 +418,9 @@ class GetNSIData:
             # check Hawaii
             if north > 18.86 and north < 28.518 and south > 18.86 and east < -154.755 and west > -178.45:
                 # Bbox is within Hawaii's bbox (may still not be over land)
-                self.dlgBbox.dlButton.setEnabled(True)
-            # check Puerto Rico
+                self.bbox_download(bbox, option)
+            # add elif to check if partially outside HI bbox
             else:
-                self.dlgBbox.dlButton.setEnabled(False)
                 msg = QMessageBox.warning(
                 None,
                 self.tr("Bounding box outside U.S."),
@@ -404,16 +428,43 @@ class GetNSIData:
                 QMessageBox.StandardButtons(
                     QMessageBox.Cancel))
         elif west > -124.85 and east < -66.88:
-            self.dlgBbox.dlButton.setEnabled(True)
+            lat_span = abs(north - south)
+            lon_span = abs(east - west)
+            area = lat_span * lon_span
+            if area < 6: # What is a good value here?
+                self.bbox_download(bbox, coords, option)
+            else:
+                msg = QMessageBox.warning(
+                None,
+                self.tr("Area too large"),
+                self.tr("""The defined area is too large. Consider downloading a statewide dataset or use the Get NSI Data by FIPS tool."""),
+                QMessageBox.StandardButtons(
+                    QMessageBox.Cancel))
+        # add elif to check if partially outside CONUS bbox
         else:
-            self.dlgBbox.dlButton.setEnabled(False)
             msg = QMessageBox.warning(
             None,
             self.tr("Bounding box outside U.S."),
             self.tr("""The defined area is completely outside the United States."""),
             QMessageBox.StandardButtons(
                 QMessageBox.Cancel))
-            
-        
         # check size
+        
+    def bbox_download(self, bbox, coords, option):
+        print(f"coords: {coords}, option: {option}")
+        if option is None:
+            msg = QMessageBox.warning(
+            None,
+            self.tr("No download type selected"),
+            self.tr("""You have not chosen a download type. You must choose at least one option."""),
+            QMessageBox.StandardButtons(
+                QMessageBox.Cancel))
+            pass
+        elif option == "struct":
+            self.dlgBbox.downloader.get_structs_bbox(bbox, self.dir)
+        else:
+            self.dlgBbox.downloader.get_stats_bbox(bbox, coords, self.dir)
+        
+        
+        
         

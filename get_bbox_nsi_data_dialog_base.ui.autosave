@@ -19,7 +19,7 @@
      <x>20</x>
      <y>20</y>
      <width>521</width>
-     <height>308</height>
+     <height>310</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
