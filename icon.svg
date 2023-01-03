@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="100mm"
+   height="100mm"
+   viewBox="0 0 100 100"
+   version="1.1"
+   id="svg8"
+   inkscape:export-filename="C:\Users\sbs44\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\get_nsi_data\bitmap.png"
+   inkscape:export-xdpi="7.9828563"
+   inkscape:export-ydpi="7.9828563"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
+   sodipodi:docname="icon.svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="129.29159"
+     inkscape:cy="168.83526"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     inkscape:document-rotation="0"
+     showgrid="false"
+     units="mm"
+     inkscape:window-width="1267"
+     inkscape:window-height="1009"
+     inkscape:window-x="2218"
+     inkscape:window-y="55"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer 2">
+    <circle
+       style="fill:#b3b3b3;stroke-width:0.560229;stroke-opacity:0.302941"
+       id="path859"
+       cx="50"
+       cy="50"
+       r="49" />
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g855"
+       transform="translate(0,-13)">
+      <rect
+         style="fill:#000080;stroke-width:0.341667;stroke-opacity:0.302941"
+         id="rect833"
+         width="50"
+         height="40"
+         x="25"
+         y="60" />
+      <path
+         id="path847"
+         style="fill:#000080;stroke-width:0.541295;stroke-opacity:0.302941"
+         inkscape:transform-center-x="-0.0064749859"
+         inkscape:transform-center-y="-6.6617298"
+         d="M 85,60.985211 49.999999,60.992611 15,61.000011 32.490287,41.000005 49.980573,21 67.490287,40.992606 Z" />
+      <rect
+         style="fill:#000000;stroke-width:0.476409;stroke-opacity:0.302941"
+         id="rect850"
+         width="14"
+         height="20"
+         x="43"
+         y="80" />
+    </g>
+  </g>
+</svg>
