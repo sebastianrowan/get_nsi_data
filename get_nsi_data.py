@@ -307,8 +307,12 @@ class GetNSIData:
         self.dlgBbox = GetBboxNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
         
-        self.dlgBbox.extentButtonCanvas.clicked.connect(self.bbox_get_canvas_extent)
+        self.dlgBbox.comboBoxLayer.addItems([lyr.name() for lyr in QgsProject.instance().mapLayers().values()])
         
+        self.dlgBbox.bboxFolderButton.clicked.connect(self.bbox_select_output_folder)
+        self.dlgBbox.bboxSaveLine.textChanged.connect(self.bbox_update_dir)
+        self.dlgBbox.extentButtonCanvas.clicked.connect(self.bbox_get_canvas_extent)
+        self.dlgBbox.extentButtonLayer.clicked.connect(self.bbox_get_layer_extent)
         self.dlgBbox.dlButton.clicked.connect(self.bbox_validate_coords)
         
         # show the dialog
@@ -374,12 +378,28 @@ class GetNSIData:
             
         extent = crs_transform.transform(self.iface.mapCanvas().extent())        
         
+        self.dlgBbox.spinBoxNorth.setValue(extent.yMaximum())
+        self.dlgBbox.spinBoxSouth.setValue(extent.yMinimum())
+        self.dlgBbox.spinBoxEast.setValue(extent.xMaximum())
+        self.dlgBbox.spinBoxWest.setValue(extent.xMinimum())
+    
+    def bbox_get_layer_extent(self):
+        request_crs = QgsCoordinateReferenceSystem("EPSG:4326")  # WGS84
+        canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+        
+        crs_transform = QgsCoordinateTransform()
+        crs_transform.setSourceCrs(canvas_crs)
+        crs_transform.setDestinationCrs(request_crs)
+        
+        layer_name = self.dlgBbox.comboBoxLayer.currentText()
+        layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+        extent = crs_transform.transform(layer.extent())        
         
         self.dlgBbox.spinBoxNorth.setValue(extent.yMaximum())
         self.dlgBbox.spinBoxSouth.setValue(extent.yMinimum())
         self.dlgBbox.spinBoxEast.setValue(extent.xMaximum())
         self.dlgBbox.spinBoxWest.setValue(extent.xMinimum())
-        
+    
     def bbox_validate_coords(self):
         # I think the following are true:
         #   south must be less than north
@@ -449,6 +469,14 @@ class GetNSIData:
             QMessageBox.StandardButtons(
                 QMessageBox.Cancel))
         # check size
+    
+    def bbox_select_output_folder(self):
+        folder_name = QFileDialog.getExistingDirectory(self.dlgBbox, "Select output folder")
+        self.dlgBbox.bboxSaveLine.setText(folder_name)
+        self.bbox_update_dir()
+        
+    def bbox_update_dir(self):
+        self.dir = self.dlgBbox.bboxSaveLine.text()
         
     def bbox_download(self, bbox, coords, option):
         print(f"coords: {coords}, option: {option}")

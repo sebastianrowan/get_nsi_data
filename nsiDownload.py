@@ -215,7 +215,7 @@ class APIDownload:
         if fips is None:
             pass
         else:
-            url = QUrl(f"{cls.stats_url}?fips={fips}&fmt=fs")
+            url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
             saveName = f"nsi_2022_{fips}{saveAs}"
             fullPath = f"{dest}\{saveName}"
             cls.dir = dest
