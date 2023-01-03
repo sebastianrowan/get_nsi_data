@@ -35,7 +35,7 @@ import math
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .get_nsi_data_dialog import GetFipsNSIDataDialog, GetStateNSIDataDialog, GetBboxNSIDataDialog, GetShapeNSIDataDialog
+from .get_nsi_data_dialog import GetNSIDataDialog, GetFipsNSIDataDialog, GetStateNSIDataDialog, GetBboxNSIDataDialog, GetShapeNSIDataDialog
 from .census_objects import State, County, Tract
 
 
@@ -175,27 +175,33 @@ class GetNSIData:
         icon_path = ':/plugins/get_nsi_data/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Get NSI Data by State'),
-            callback=self.runState,
+            text=self.tr(u'Get NSI Data'),
+            callback=self.run,
             parent=self.iface.mainWindow())
+            
+        # self.add_action(
+            # icon_path,
+            # text=self.tr(u'Get NSI Data by State'),
+            # callback=self.runState,
+            # parent=self.iface.mainWindow())
 
-        self.add_action(
-            icon_path,
-            text=self.tr(u'Get NSI Data by FIPS'),
-            callback=self.runFips,
-            parent=self.iface.mainWindow())
+        # self.add_action(
+            # icon_path,
+            # text=self.tr(u'Get NSI Data by FIPS'),
+            # callback=self.runFips,
+            # parent=self.iface.mainWindow())
             
-        self.add_action(
-            icon_path,
-            text=self.tr(u'Get NSI Data by Bounding Box'),
-            callback=self.runBbox,
-            parent=self.iface.mainWindow())
+        # self.add_action(
+            # icon_path,
+            # text=self.tr(u'Get NSI Data by Bounding Box'),
+            # callback=self.runBbox,
+            # parent=self.iface.mainWindow())
             
-        self.add_action(
-            icon_path,
-            text=self.tr(u'Get NSI Data by Shape'),
-            callback=self.runShape,
-            parent=self.iface.mainWindow())
+        # self.add_action(
+            # icon_path,
+            # text=self.tr(u'Get NSI Data by Shape'),
+            # callback=self.runShape,
+            # parent=self.iface.mainWindow())
             
         # will be set False in run()
         self.first_start = True
@@ -208,9 +214,6 @@ class GetNSIData:
                 self.tr(u'&Get NSI Data'),
                 action)
             self.iface.removeToolBarIcon(action)
-    
-    def updateDir(self):
-        self.dir = self.dlgState.stateSaveLine.text()
     
     def get_states(self):
         
@@ -242,17 +245,36 @@ class GetNSIData:
                 states[state_name] = state_i
         return(states)    
     
-    def selectStateOutputFolder(self):
-        folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
-        self.dlgState.stateSaveLine.setText(folderName)
-        self.updateDir()
-            
+    def run(self):
+        self.dlg = GetNSIDataDialog(self.iface)
+        self.dir = tempfile.gettempdir()
+        
+        #self.dlg.folderButton.clicked.connect(self.select_output_folder)
+        #self.dlg.saveLine.textChanged.connect(self.update_dir)
+        
+        self.dlg.show()
+        
+        result = self.dlg.exec_()
+        
+        if result:
+            if self.dlg.stateButton.isChecked():
+                self.runState()
+            elif self.dlg.fipsButton.isChecked():
+                self.runFips()
+            elif self.dlg.bboxButton.isChecked():
+                self.runBbox()
+            elif self.dlg.shapeButton.isChecked():
+                self.runShape()
+            else:
+                # This should not happen
+                pass
+        
     def runState(self):
         """Run method that performs all the real work"""
         self.dlgState = GetStateNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
-        self.dlgState.stateFolderButton.clicked.connect(self.selectStateOutputFolder)
-        self.dlgState.stateSaveLine.textChanged.connect(self.updateDir)
+        self.dlgState.stateFolderButton.clicked.connect(self.state_select_output_folder)
+        self.dlgState.stateSaveLine.textChanged.connect(self.state_update_dir)
         
         
         # Clear the contents of the state comboBox from previous runs
@@ -339,9 +361,11 @@ class GetNSIData:
         
         layers = []
         for layer in QgsProject.instance().mapLayers().values():
-            if layer.geometryType() == QgsWkbTypes.PolygonGeometry:
-                layers.append(layer.name())
-        
+            try:
+                if layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                    layers.append(layer.name())
+            except Exception as e:
+                print(f"Failed to check geometryType. {e}") 
         self.dlgShape.comboBoxLayer.addItems(layers)
         
         self.dlgShape.shapeFolderButton.clicked.connect(self.shape_select_output_folder)
@@ -354,13 +378,24 @@ class GetNSIData:
         # See if OK was pressed
         if result:
             layer_name = self.dlgShape.comboBoxLayer.currentText()
-            layer = QgsProject.instance().mapLayersByName(layer_name)[0]
-            
-            exp = QgsJsonExporter(layer)
-            exp.setIncludeAttributes(False)
-            layer_geojson = exp.exportFeatures(layer.getFeatures())
-            
-            self.dlgShape.downloader.get_structs_shape(layer_name, layer_geojson, self.dir)
+            if layer_name == "":
+                pass
+            else:
+                layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+                
+                exp = QgsJsonExporter(layer)
+                exp.setIncludeAttributes(False)
+                layer_geojson = exp.exportFeatures(layer.getFeatures())
+                
+                self.dlgShape.downloader.get_structs_shape(layer_name, layer_geojson, self.dir)
+    
+    def state_select_output_folder(self):
+        folderName = QFileDialog.getExistingDirectory(self.dlgState, "Select output folder")
+        self.dlgState.stateSaveLine.setText(folderName)
+        self.state_update_dir()
+        
+    def state_update_dir(self):
+        self.dir = self.dlgState.stateSaveLine.text()    
         
     def fips_update_combo_box_county(self):
         self.dlgFips.comboBoxCounty.clear()
