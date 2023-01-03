@@ -25,7 +25,7 @@ from qgis.PyQt.QtCore import pyqtSlot, QSettings, QTranslator, QCoreApplication,
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply,  QNetworkAccessManager
-from qgis.core import QgsProject, Qgis, QgsCoordinateReferenceSystem,  QgsCoordinateTransform
+from qgis.core import QgsProject, Qgis, QgsCoordinateReferenceSystem,  QgsCoordinateTransform, QgsGeometry,QgsWkbTypes, QgsJsonExporter
 import os
 import os.path
 import tempfile
@@ -35,7 +35,7 @@ import math
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .get_nsi_data_dialog import GetNSIDataDialog, GetStateNSIDataDialog, GetBboxNSIDataDialog
+from .get_nsi_data_dialog import GetFipsNSIDataDialog, GetStateNSIDataDialog, GetBboxNSIDataDialog, GetShapeNSIDataDialog
 from .census_objects import State, County, Tract
 
 
@@ -191,6 +191,12 @@ class GetNSIData:
             callback=self.runBbox,
             parent=self.iface.mainWindow())
             
+        self.add_action(
+            icon_path,
+            text=self.tr(u'Get NSI Data by Shape'),
+            callback=self.runShape,
+            parent=self.iface.mainWindow())
+            
         # will be set False in run()
         self.first_start = True
 
@@ -275,7 +281,7 @@ class GetNSIData:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        self.dlgFips = GetNSIDataDialog(self.iface)
+        self.dlgFips = GetFipsNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
         self.dlgFips.fipsFolderButton.clicked.connect(self.fips_select_output_folder)
         self.dlgFips.fipsSaveLine.textChanged.connect(self.fips_update_dir)
@@ -303,7 +309,6 @@ class GetNSIData:
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         self.dlgBbox = GetBboxNSIDataDialog(self.iface)
         self.dir = tempfile.gettempdir()
         
@@ -325,6 +330,38 @@ class GetNSIData:
             # substitute with your code.
             pass
     
+    def runShape(self):
+        """Run method that performs all the real work"""
+        
+        # Create the dialog with elements (after translation) and keep reference
+        self.dlgShape = GetShapeNSIDataDialog(self.iface)
+        self.dir = tempfile.gettempdir()
+        
+        layers = []
+        for layer in QgsProject.instance().mapLayers().values():
+            if layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                layers.append(layer.name())
+        
+        self.dlgShape.comboBoxLayer.addItems(layers)
+        
+        self.dlgShape.shapeFolderButton.clicked.connect(self.shape_select_output_folder)
+        self.dlgShape.shapeSaveLine.textChanged.connect(self.shape_update_dir)
+        
+        # show the dialog
+        self.dlgShape.show()
+        # Run the dialog event loop
+        result = self.dlgShape.exec_()
+        # See if OK was pressed
+        if result:
+            layer_name = self.dlgShape.comboBoxLayer.currentText()
+            layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+            
+            exp = QgsJsonExporter(layer)
+            exp.setIncludeAttributes(False)
+            layer_geojson = exp.exportFeatures(layer.getFeatures())
+            
+            self.dlgShape.downloader.get_structs_shape(layer_name, layer_geojson, self.dir)
+        
     def fips_update_combo_box_county(self):
         self.dlgFips.comboBoxCounty.clear()
         state = self.dlgFips.comboBoxState.currentText()
@@ -492,6 +529,17 @@ class GetNSIData:
             self.dlgBbox.downloader.get_structs_bbox(bbox, self.dir)
         else:
             self.dlgBbox.downloader.get_stats_bbox(bbox, coords, self.dir)
+        
+    def shape_select_output_folder(self):
+        folder_name = QFileDialog.getExistingDirectory(self.dlgShape, "Select output folder")
+        self.dlgShape.shapeSaveLine.setText(folder_name)
+        self.shape_update_dir()
+        
+    def shape_update_dir(self):
+        self.dir = self.dlgShape.shapeSaveLine.text()   
+
+        
+        
         
         
         
