@@ -221,6 +221,7 @@ class APIDownload:
             pass
         else:
             url = QUrl(f"{cls.root_url}?fips={fips}&fmt=fs")
+            print(f"Request url is {url}")
             saveName = f"nsi_2022_{fips}{saveAs}"
             fullPath = f"{dest}/{saveName}"
             cls.dir = dest
